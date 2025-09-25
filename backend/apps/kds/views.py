@@ -4,6 +4,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from .models import TicketCocina
 from .serializers import TicketCocinaSerializer
+from apps.seguridad.permissions import IsCocina, IsCocinaOrMeseroReadOnly
 
 class TicketCocinaViewSet(viewsets.ReadOnlyModelViewSet):
     """
@@ -15,9 +16,10 @@ class TicketCocinaViewSet(viewsets.ReadOnlyModelViewSet):
       POST /kds/tickets/{id_ticket}/listo
       POST /kds/tickets/{id_ticket}/entregado
     """
+    permission_classes = [IsCocinaOrMeseroReadOnly]
     queryset = TicketCocina.objects.all().order_by('fecha_generado', 'id_ticket')
     serializer_class = TicketCocinaSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [IsCocina]
     filter_backends = [filters.OrderingFilter]
     ordering = ['fecha_generado', 'id_ticket']
 
@@ -37,17 +39,17 @@ class TicketCocinaViewSet(viewsets.ReadOnlyModelViewSet):
         return Response(self.get_serializer(tk).data)
 
     @transaction.atomic
-    @action(detail=True, methods=['post'], url_path='en-preparacion')
+    @action(detail=True, methods=['post'], url_path='en-preparacion',permission_classes=[IsCocina])
     def en_preparacion(self, request, pk=None):
         return self._cambiar_estado(pk, 'EN_PREPARACION')
 
     @transaction.atomic
-    @action(detail=True, methods=['post'], url_path='listo')
+    @action(detail=True, methods=['post'], url_path='listo',permission_classes=[IsCocina])
     def listo(self, request, pk=None):
         return self._cambiar_estado(pk, 'LISTO')
 
     @transaction.atomic
-    @action(detail=True, methods=['post'], url_path='entregado')
+    @action(detail=True, methods=['post'], url_path='entregado',permission_classes=[IsCocina])
     def entregado(self, request, pk=None):
         return self._cambiar_estado(pk, 'ENTREGADO')
 

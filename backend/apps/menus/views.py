@@ -2,24 +2,25 @@ from django.db import transaction
 from rest_framework import viewsets, permissions, filters, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from apps.seguridad.permissions import IsAdmin
 
 from .models import Menu, MenuSeccion, MenuItem
 from .serializers import MenuSerializer, MenuSeccionSerializer, MenuItemSerializer
 
 class BaseCRUD(viewsets.ModelViewSet):
-    permission_classes = [permissions.AllowAny]   # TODO: roles
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = []
     ordering = []
 
 class MenuViewSet(BaseCRUD):
+    permission_classes = [IsAdmin]
     queryset = Menu.objects.all().order_by('-activo','nombre')
     serializer_class = MenuSerializer
     search_fields = ['nombre','canal']
     ordering = ['-activo','nombre']
 
     @transaction.atomic
-    @action(detail=True, methods=['post'], url_path='publicar')
+    @action(detail=True, methods=['post'], url_path='publicar',permission_classes=[IsAdmin])
     def publicar(self, request, pk=None):
         m = self.get_object()
         m.activo = True
@@ -27,7 +28,7 @@ class MenuViewSet(BaseCRUD):
         return Response(MenuSerializer(m).data)
 
     @transaction.atomic
-    @action(detail=True, methods=['post'], url_path='despublicar')
+    @action(detail=True, methods=['post'], url_path='despublicar',permission_classes=[IsAdmin])
     def despublicar(self, request, pk=None):
         m = self.get_object()
         m.activo = False
@@ -35,7 +36,7 @@ class MenuViewSet(BaseCRUD):
         return Response(MenuSerializer(m).data)
 
     @transaction.atomic
-    @action(detail=True, methods=['post'], url_path='agregar-items-por-categoria')
+    @action(detail=True, methods=['post'], url_path='agregar-items-por-categoria',permission_classes=[IsAdmin])
     def agregar_items_por_categoria(self, request, pk=None):
         """
         body: { id_categoria, id_seccion (opcional), visible=true/false }
@@ -66,13 +67,14 @@ class MenuViewSet(BaseCRUD):
 
 
 class MenuSeccionViewSet(BaseCRUD):
+    permission_classes = [IsAdmin]
     queryset = MenuSeccion.objects.all().order_by('id_menu','orden')
     serializer_class = MenuSeccionSerializer
     search_fields = ['nombre']
     ordering = ['id_menu','orden']
 
     @transaction.atomic
-    @action(detail=False, methods=['post'], url_path='reordenar')
+    @action(detail=False, methods=['post'], url_path='reordenar',permission_classes=[IsAdmin])
     def reordenar(self, request):
         """
         body: { id_menu, ordenes: [ {id_seccion, orden}, ... ] }
@@ -91,13 +93,14 @@ class MenuSeccionViewSet(BaseCRUD):
 
 
 class MenuItemViewSet(BaseCRUD):
+    permission_classes = [IsAdmin]
     queryset = MenuItem.objects.all().order_by('id_menu','id_seccion','orden')
     serializer_class = MenuItemSerializer
     search_fields = []  # podríamos buscar por nombre de producto con join si quisieras
     ordering = ['id_menu','id_seccion','orden']
 
     @transaction.atomic
-    @action(detail=False, methods=['post'], url_path='reordenar')
+    @action(detail=False, methods=['post'], url_path='reordenar',permission_classes=[IsAdmin])
     def reordenar(self, request):
         """
         body: { id_menu, id_seccion (opcional), ordenes: [ {id_menu_item, orden}, ... ] }

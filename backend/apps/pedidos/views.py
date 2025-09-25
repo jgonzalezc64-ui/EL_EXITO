@@ -3,12 +3,22 @@ from django.utils import timezone
 from rest_framework import viewsets, permissions, filters, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.exceptions import PermissionDenied, NotAuthenticated
+from apps.seguridad.permissions import IsAdmin
 
 from .models import Tienda, Mesa, EstadoOrden, TipoServicio, Orden, OrdenDetalle, OrdenDetalleModificador
 from .serializers import (
     TiendaSerializer, MesaSerializer, EstadoOrdenSerializer, TipoServicioSerializer,
     OrdenSerializer, OrdenDetalleSerializer, OrdenDetalleModSerializer
 )
+
+def _require_role(request, allowed_groups: list[str]):
+    if not request.user or not request.user.is_authenticated:
+        raise NotAuthenticated()
+    if not request.user.groups.filter(name__in=allowed_groups).exists():
+        raise PermissionDenied("No tiene permisos para esta acción")
+
 
 # ---- CRUD simples ----
 
@@ -19,12 +29,14 @@ class BaseCRUD(viewsets.ModelViewSet):
     ordering = []
 
 class TiendaViewSet(BaseCRUD):
+    permission_classes = [IsAdmin]
     queryset = Tienda.objects.all().order_by('nombre')
     serializer_class = TiendaSerializer
     search_fields = ['nombre', 'codigo']
     ordering = ['nombre']
 
 class MesaViewSet(BaseCRUD):
+    permission_classes = [IsAdmin]
     queryset = Mesa.objects.select_related('id_tienda').all().order_by('id_tienda__nombre','codigo')
     serializer_class = MesaSerializer
     search_fields = ['codigo', 'ubicacion', 'id_tienda__nombre']
@@ -33,19 +45,19 @@ class MesaViewSet(BaseCRUD):
 # ---- Solo lectura ----
 
 class EstadoOrdenViewSet(viewsets.ReadOnlyModelViewSet):
+    permission_classes = [IsAdmin]
     queryset = EstadoOrden.objects.all().order_by('nombre')
     serializer_class = EstadoOrdenSerializer
-    permission_classes = [permissions.AllowAny]
 
 class TipoServicioViewSet(viewsets.ReadOnlyModelViewSet):
+    permission_classes = [IsAuthenticated]
     queryset = TipoServicio.objects.all().order_by('nombre')
     serializer_class = TipoServicioSerializer
-    permission_classes = [permissions.AllowAny]
 
 # ---- Orden: acciones de negocio ----
 
 class OrdenViewSet(viewsets.GenericViewSet):
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [IsAuthenticated]
     serializer_class = OrdenSerializer
 
     def get_queryset(self):
@@ -67,9 +79,11 @@ class OrdenViewSet(viewsets.GenericViewSet):
     @transaction.atomic
     @action(detail=False, methods=['post'], url_path='abrir')
     def abrir(self, request):
+        _require_role(request, ['ADMIN', 'MESERO'])
         """
         body: { id_tipo_servicio, id_mesa (opcional según servicio), id_mesero (opcional), observaciones (opcional) }
         """
+        
         id_tipo_servicio = request.data.get('id_tipo_servicio')
         id_mesa = request.data.get('id_mesa')
         id_mesero = request.data.get('id_mesero')
@@ -98,6 +112,7 @@ class OrdenViewSet(viewsets.GenericViewSet):
     @transaction.atomic
     @action(detail=True, methods=['post'], url_path='agregar-detalle')
     def agregar_detalle(self, request, pk=None):
+        _require_role(request, ['ADMIN', 'MESERO'])
         """
         body: { id_producto, cantidad, precio_unitario, nota, modificadores?: [{id_modificador, cantidad, precio_extra}] }
         """
@@ -126,6 +141,7 @@ class OrdenViewSet(viewsets.GenericViewSet):
     @transaction.atomic
     @action(detail=True, methods=['post'], url_path='editar-detalle')
     def editar_detalle(self, request, pk=None):
+        _require_role(request, ['ADMIN', 'MESERO'])
         """
         body: { id_detalle, cantidad?, precio_unitario?, nota?, modificadores?: replace: true/false, items: [...] }
         """
@@ -160,6 +176,7 @@ class OrdenViewSet(viewsets.GenericViewSet):
     @transaction.atomic
     @action(detail=True, methods=['post'], url_path='eliminar-detalle')
     def eliminar_detalle(self, request, pk=None):
+        _require_role(request, ['ADMIN', 'MESERO'])
         """
         body: { id_detalle }
         """
@@ -174,6 +191,7 @@ class OrdenViewSet(viewsets.GenericViewSet):
     @transaction.atomic
     @action(detail=True, methods=['post'], url_path='aplicar-descuento')
     def aplicar_descuento(self, request, pk=None):
+        _require_role(request, ['ADMIN', 'MESERO'])
         """
         body: { descuento }
         """
@@ -188,6 +206,7 @@ class OrdenViewSet(viewsets.GenericViewSet):
     @transaction.atomic
     @action(detail=True, methods=['post'], url_path='cambiar-estado')
     def cambiar_estado(self, request, pk=None):
+        _require_role(request, ['ADMIN', 'MESERO'])
         """
         body: { id_estado }
         (La lógica de máquina de estados se puede reforzar aquí si lo deseas)

@@ -1,6 +1,8 @@
 from rest_framework import viewsets, permissions, filters, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.permissions import AllowAny
+from apps.seguridad.permissions import IsAdmin, IsAdminOrReadOnly
 
 from .models import (
     Categoria, Producto, ModificadorGrupo, Modificador, ProductoModificador
@@ -14,13 +16,17 @@ from .serializers import (
 
 class BaseCRUDViewSet(viewsets.ModelViewSet):
     """Base con CRUD + filtros comunes."""
-    permission_classes = [permissions.AllowAny]  # TODO: ajustar por roles más adelante
+    permission_classes = [IsAdminOrReadOnly]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = []
     ordering = []
 
 
 class CategoriaViewSet(BaseCRUDViewSet):
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve']:
+            return [AllowAny()]
+        return super().get_permissions()
     queryset = Categoria.objects.all().order_by('nombre')
     serializer_class = CategoriaSerializer
     search_fields = ['nombre', 'descripcion']
@@ -28,6 +34,10 @@ class CategoriaViewSet(BaseCRUDViewSet):
 
 
 class ProductoViewSet(BaseCRUDViewSet):
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve']:
+            return [AllowAny()]
+        return super().get_permissions()
     queryset = (
         Producto.objects.select_related('id_categoria')
         .all().order_by('nombre')
@@ -38,6 +48,10 @@ class ProductoViewSet(BaseCRUDViewSet):
 
 
 class ModificadorGrupoViewSet(BaseCRUDViewSet):
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve']:
+            return [AllowAny()]
+        return super().get_permissions()
     queryset = ModificadorGrupo.objects.all().order_by('nombre')
     serializer_class = ModificadorGrupoSerializer
     search_fields = ['nombre', 'descripcion']
@@ -45,6 +59,10 @@ class ModificadorGrupoViewSet(BaseCRUDViewSet):
 
 
 class ModificadorViewSet(BaseCRUDViewSet):
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve']:
+            return [AllowAny()]
+        return super().get_permissions()
     queryset = (
         Modificador.objects.select_related('id_grupo')
         .all().order_by('nombre')
@@ -62,7 +80,7 @@ class ProductoModificadorViewSet(viewsets.GenericViewSet):
     - POST /producto-modificadores/remove {id_producto,id_modificador} -> eliminar vínculo
       (Usamos POST para remove por comodidad del front; DELETE no admite body)
     """
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [IsAdmin]
     serializer_class = ProductoModificadorSerializer
 
     def get_queryset(self):

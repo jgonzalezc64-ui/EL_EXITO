@@ -22,8 +22,22 @@ class RefreshView(TokenRefreshView):
 # --- Yo (perfil) ---
 class MeViewSet(viewsets.ViewSet):
     permission_classes = [IsAuthenticated]
+
     def list(self, request):
-        return Response(UserSerializer(request.user).data)
+        u = request.user
+        groups = list(u.groups.values_list("name", flat=True))
+        # Respuesta mínima necesaria para el front:
+        data = {
+            "id": u.id,
+            "username": u.username,
+            "is_superuser": bool(u.is_superuser),
+            "groups": groups,
+            # Campos extra opcionales; no rompen nada en el front:
+            "email": u.email,
+            "first_name": u.first_name,
+            "last_name": u.last_name,
+        }
+        return Response(data)
 
 # --- Usuarios (CRUD admin) ---
 class UserViewSet(viewsets.ModelViewSet):

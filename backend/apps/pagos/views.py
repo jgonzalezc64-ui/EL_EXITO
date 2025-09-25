@@ -3,6 +3,7 @@ from django.db import connection, transaction
 from rest_framework import viewsets, permissions, status, filters
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from apps.seguridad.permissions import IsCaja
 
 from .models import MetodoPago, Pago
 from .serializers import MetodoPagoSerializer, PagoSerializer
@@ -10,7 +11,7 @@ from .serializers import MetodoPagoSerializer, PagoSerializer
 class MetodoPagoViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = MetodoPago.objects.all().order_by('nombre')
     serializer_class = MetodoPagoSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [IsCaja]
 
 class PagoViewSet(viewsets.ReadOnlyModelViewSet):
     """
@@ -18,7 +19,7 @@ class PagoViewSet(viewsets.ReadOnlyModelViewSet):
     POST /pagos/registrar     -> registra un pago y si Σ≥total marca COBRADA
     """
     serializer_class = PagoSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [IsCaja]
     filter_backends = [filters.OrderingFilter]
     ordering = ['-fecha_hora','-id_pago']
 
@@ -30,7 +31,7 @@ class PagoViewSet(viewsets.ReadOnlyModelViewSet):
         return qs
 
     @transaction.atomic
-    @action(detail=False, methods=['post'], url_path='registrar')
+    @action(detail=False, methods=['post'], url_path='registrar',permission_classes=[IsCaja])
     def registrar(self, request):
         """
         body: { id_orden, id_metodo, monto, referencia? }

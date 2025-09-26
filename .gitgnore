@@ -42,3 +42,9 @@ Thumbs.db
 
 # Coverage (tests)
 coverage/
+
+# Archivos de entorno
+.env
+*.env
+backend/.env
+frontend/.env

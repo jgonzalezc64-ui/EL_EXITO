@@ -1,0 +1,22 @@
+# --- Raíz / Front ---
+node_modules/
+dist/
+build/
+*.log
+
+# --- Variables de entorno ---
+.env
+.env.*
+backend/.env
+
+# --- Python / Django ---
+backend/.venv/
+backend/**/__pycache__/
+backend/**/*.py[cod]
+backend/staticfiles/
+backend/media/
+
+# --- IDE / SO ---
+.vscode/
+.DS_Store
+Thumbs.db
